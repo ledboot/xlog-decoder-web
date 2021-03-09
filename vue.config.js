@@ -12,7 +12,6 @@ const {
   providePlugin,
   build7z,
 } = require('./src/config')
-const { webpackBarName, webpackBanner } = require('vab-config')
 
 const { version, author } = require('./package.json')
 const Webpack = require('webpack')
@@ -21,8 +20,8 @@ const FileManagerPlugin = require('filemanager-webpack-plugin')
 const dayjs = require('dayjs')
 const date = dayjs().format('YYYY_M_D')
 const time = dayjs().format('YYYY-M-D HH:mm:ss')
-process.env.VUE_APP_TITLE = title || 'vue-admin-beautiful'
-process.env.VUE_APP_AUTHOR = author || 'chuzhixin'
+process.env.VUE_APP_TITLE = title
+process.env.VUE_APP_AUTHOR = author
 process.env.VUE_APP_UPDATE_TIME = time
 process.env.VUE_APP_VERSION = version
 
@@ -67,9 +66,7 @@ module.exports = {
       },
       plugins: [
         new Webpack.ProvidePlugin(providePlugin),
-        new WebpackBar({
-          name: webpackBarName,
-        }),
+        new WebpackBar({ name: title }),
       ],
     }
   },
@@ -94,10 +91,6 @@ module.exports = {
           },
         },
       })
-      config
-        .plugin('banner')
-        .use(Webpack.BannerPlugin, [`${webpackBanner}${time}`])
-        .end()
       config.module
         .rule('images')
         .use('image-webpack-loader')

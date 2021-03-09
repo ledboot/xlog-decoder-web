@@ -1,6 +1,7 @@
 {
   "name": "xlog-decoder-web",
   "version": "0.1.0",
+  "author": "ledboot",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -10,6 +11,7 @@
   "dependencies": {
     "ant-design-vue": "2.0.0-rc.9",
     "axios": "^0.21.1",
+    "copy-to-clipboard": "^3.3.1",
     "core-js": "^3.8.3",
     "dayjs": "^1.10.4",
     "js-cookie": "^3.0.0-rc.1",
@@ -40,7 +42,6 @@
     "stylelint-config-prettier": "^8.0.2",
     "stylelint-config-recess-order": "^2.3.0",
     "svg-sprite-loader": "^5.2.1",
-    "vab-config": "0.0.8",
     "webpackbar": "^5.0.0-3"
   },
   "eslintConfig": {

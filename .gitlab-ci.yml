@@ -1,0 +1,142 @@
+stages:
+  - run-linter
+  - build-k8s
+  - deploy-k8s
+  - notify
+
+services:
+  - ht-hk.tencentcloudcr.com/public/docker:19.03.0-dind
+
+image: ht-hk.tencentcloudcr.com/public/docker:19.03.0-go1.14.7
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://localhost:2375
+  TZ: "Asia/Shanghai"
+
+before_script:
+  - git config --global user.name "gitops"
+  - git config --global user.email "devops@hellotalk.com"
+  - echo "machine code.hellotalk.com login ${CI_USERNAME} password ${CI_PASSWORD} " > /root/.netrc
+  - chmod 600 /root/.netrc
+  - test -z go && echo "go cache dir is empty!!!"
+
+after_script:
+  - test -z go && echo "/go dir is empty!!!"
+
+golangci-lint:
+  stage: run-linter
+  image: ht-hk.tencentcloudcr.com/public/docker:19.03.0-go1.14.7
+  tags:
+    - develop
+  before_script:
+    - test -z go && echo "go cache dir is empty!!!"
+    - test -d go && rm -rf /go && mv go / && touch /tmp/cache.ok
+    - git config --global user.name "gitops"
+    - git config --global user.email "devops@hellotalk.com"
+    - echo "machine code.hellotalk.com login ${CI_USERNAME} password ${CI_PASSWORD} " > /root/.netrc
+    - chmod 600 /root/.netrc
+  after_script:
+    - test -z /go && echo "/go dir is empty!!!"
+    - test -f /tmp/cache.ok && rm -f /tmp/cache.ok && test -d go && mv /go .
+  script:
+    - make ci/lint
+  cache:
+    key: go-cache
+    paths:
+      - go/
+  only:
+    refs:
+#     - develop
+#     - tags
+
+build-k8s-latest:
+  stage: build-k8s
+  tags:
+    - develop
+  script:
+    - make build-k8s
+  cache:
+    key: go-cache
+    paths:
+      - go/
+  only:
+    refs:
+      - develop
+
+build-k8s-tags:
+  stage: build-k8s
+  tags:
+    - tke-runner
+  script:
+    - make build-k8s/tags
+  cache:
+    key: go-cache
+    paths:
+      - go/
+  only:
+    - tags
+  except:
+    - develop
+
+deploy-k8s-develop:
+  stage: deploy-k8s
+  image: ht-hk.tencentcloudcr.com/public/kustomize:3.8.4
+  tags:
+    - develop
+  script:
+    - make deploy-k8s/develop
+  only:
+    refs:
+      - develop
+
+deploy-k8s-test:
+  stage: deploy-k8s
+  image: ht-hk.tencentcloudcr.com/public/kustomize:3.8.4
+  tags:
+    - testing
+  script:
+    - make deploy-k8s/test
+  only:
+    refs:
+      - develop
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /^CI/
+      - $HTCI =~ /^CI/
+
+deploy-k8s-prod:
+  stage: deploy-k8s
+  image: ht-hk.tencentcloudcr.com/public/kustomize:3.8.4
+  tags:
+    - production
+  script:
+    - make deploy-k8s/prod
+  only:
+    - tags
+  except:
+    - develop
+
+# 构建失败时的通知消息
+notifyFailFeiShu:
+  stage: notify
+  script:
+    - curl 'http://robot-notify.hellotalk8.com/sender/feishurobot' -H 'Content-Type:application/json' -d "{\"tos\":\"b2948f3b-f303-4932-aea7-75a0e7691994\",\"content\":\"构建结果：失败\n此构建由：$GITLAB_USER_NAME 触发\n项目名称：$CI_PROJECT_NAME\n提交SHA：$CI_COMMIT_SHORT_SHA\n提交日志：$CI_COMMIT_MESSAGE\n构建分支：$CI_COMMIT_BRANCH\n构建TAG：$CI_COMMIT_TAG\n构建地址：[$CI_PIPELINE_URL]\"}"
+  tags:
+    - develop
+  when: on_failure
+  only:
+    - develop
+    - tags
+
+# 构建成功时的通知消息
+notifySuccessFeiShu:
+  stage: notify
+  script:
+    - curl 'http://robot-notify.hellotalk8.com/sender/feishurobot' -H 'Content-Type:application/json' -d "{\"tos\":\"b2948f3b-f303-4932-aea7-75a0e7691994\",\"content\":\"构建结果：成功\n此构建由：$GITLAB_USER_NAME 触发\n项目名称：$CI_PROJECT_NAME\n提交SHA：$CI_COMMIT_SHORT_SHA\n提交日志：$CI_COMMIT_MESSAGE\n构建分支：$CI_COMMIT_BRANCH\n构建TAG：$CI_COMMIT_TAG\n构建地址：[$CI_PIPELINE_URL]\"}"
+  tags:
+    - develop
+  when: on_success
+  only:
+    - develop
+    - tags
+

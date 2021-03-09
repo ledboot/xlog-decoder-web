@@ -22,11 +22,16 @@
           type="primary"
           :disabled="fileList.length === 0"
           :loading="uploading"
-          style="margin-top: 16px"
+          style="margin-bottom: 16px; margin-top: 16px"
           @click="handleUpload"
         >
           {{ uploading ? 'Uploading' : 'Start Upload' }}
         </a-button>
+        <a-input-search addon-before="下载地址:" :value="ossUrl" @search="copy">
+          <template v-slot:enterButton>
+            <a-button type="primary">复制</a-button>
+          </template>
+        </a-input-search>
       </a-col>
       <a-col :span="2" />
     </a-row>
@@ -34,9 +39,11 @@
 </template>
 <script>
   import axios from '@/utils/request'
+  import copy from 'copy-to-clipboard'
   export default {
     data() {
       return {
+        ossUrl: '',
         fileList: [],
         uploading: false,
       }
@@ -70,8 +77,6 @@
           formData.append('files', file)
         })
         this.uploading = true
-
-        // You can use any AJAX library you like
         axios
           .post('/xloger/v1/upload', formData, {
             'Content-Type': 'multipart/form-data',
@@ -79,8 +84,13 @@
           .then((data) => {
             this.fileList = []
             this.uploading = false
-            this.$message.success('upload successfully.' + data.message)
+            this.ossUrl = data.data
+            this.$message.success('upload successfully.')
           })
+      },
+      copy() {
+        copy(this.ossUrl)
+        this.$message.success('复制成功')
       },
     },
   }
